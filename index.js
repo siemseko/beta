@@ -1,5 +1,5 @@
 const express = require('express');
-const mongoose = require('mongoose');
+const fs = require('fs');  // Require fs to handle file system operations
 const cors = require('cors');
 require('dotenv').config();
 
@@ -10,34 +10,35 @@ const port = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors()); 
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => console.error('MongoDB connection error:', err));
+// Path to the JSON file where items will be stored
+const dataFilePath = './items.json';
 
-// Define a schema and model (example for 'items' collection)
-const itemSchema = new mongoose.Schema({
-  name: String,
-  description: String,
-});
+// Function to read the JSON file
+const readItemsFromFile = () => {
+  try {
+    const data = fs.readFileSync(dataFilePath, 'utf8');
+    return JSON.parse(data); // Parse the data into an array
+  } catch (error) {
+    return []; // If the file doesn't exist or can't be read, return an empty array
+  }
+};
 
-const Item = mongoose.model('Item', itemSchema);
+// Function to write to the JSON file
+const writeItemsToFile = (items) => {
+  fs.writeFileSync(dataFilePath, JSON.stringify(items, null, 2), 'utf8');
+};
 
 // Route to get all items
-app.get('/api/items', async (req, res) => {
+app.get('/api/items', (req, res) => {
   try {
-    const items = await Item.find();
+    const items = readItemsFromFile();
     res.json(items);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching data', error });
   }
 });
-
 // Route to create a new item
-app.post('/api/items', async (req, res) => {
+app.post('/api/items', (req, res) => {
   const { name, description } = req.body;
 
   if (!name || !description) {
@@ -45,8 +46,16 @@ app.post('/api/items', async (req, res) => {
   }
 
   try {
-    const newItem = new Item({ name, description });
-    await newItem.save();
+    // Get existing items from the JSON file
+    const items = readItemsFromFile();
+
+    // Create a new item and add it to the items array
+    const newItem = { name, description };
+    items.push(newItem);
+
+    // Save the updated items array to the JSON file
+    writeItemsToFile(items);
+
     res.status(201).json(newItem); // Return the created item
   } catch (error) {
     res.status(500).json({ message: 'Error creating item', error });
@@ -55,7 +64,7 @@ app.post('/api/items', async (req, res) => {
 
 // Basic route
 app.get('/', (req, res) => {
-  res.send('Welcome to the Express MongoDB server');
+  res.send('Welcome to the Express server storing items in a JSON file');
 });
 
 // Start the server
