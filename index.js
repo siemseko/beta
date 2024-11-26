@@ -30,7 +30,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // Path to the JSON file where items will be stored
-const dataFilePath = './items.json';
+const dataFilePath = './database/products.json';
 
 // Function to read the JSON file
 const readItemsFromFile = () => {
